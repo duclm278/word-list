@@ -36,8 +36,10 @@ def search_word(n):
             else:
                 audio = ""
 
-            written = entry.find("span", attrs={"class": "written"}).string
-            if written == None:
+            written_tag = entry.find("span", attrs={"class": "written"})
+            if written_tag != None:
+                written = written_tag.string
+            else:
                 written = ""
 
             subentries = entry.select("div.info.sense")
