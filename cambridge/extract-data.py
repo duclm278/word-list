@@ -26,6 +26,7 @@ def search_word(n):
     entries = details.find_all(recursive=False)
     for entry in entries:
         if entry["class"] == ["pos_section"]:
+            audio = ""
             audio_tag = entry.find("audio")
             if audio_tag != None:
                 audio_src = audio_tag.find("source")["src"]
@@ -33,14 +34,11 @@ def search_word(n):
                 filename = os.path.basename(audio_url).lower()
                 save_audio(filename, audio_url)
                 audio = f"[sound:{filename}]"
-            else:
-                audio = ""
 
+            written = ""
             written_tag = entry.find("span", attrs={"class": "written"})
             if written_tag != None:
                 written = written_tag.string
-            else:
-                written = ""
 
             subentries = entry.select("div.info.sense")
             for subentry in subentries:
