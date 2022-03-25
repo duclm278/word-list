@@ -30,21 +30,28 @@ def main():
     with open("data.txt", "a", encoding="utf-8") as file:
         for i in range(first, final + 1):
             url = f"https://www.englishprofile.org/american-english/words/usdetail/{i}"
-            response = requests.get(url, headers=setup.headers, proxies=setup.proxies)
-
-            # Pass the page to Beautiful Soup
-            html = response.content
-            headword, data = get_data(html)
+            headword, data = get_data(url)
 
             file.write(data)
             print(f"{i}. {headword}")
 
     print("=> Extract complete!")
 
-def get_data(html):
-    soup = BeautifulSoup(html, "html.parser")
+def get_data(url):
+    for attempt in range(5):
+        try:
+            response = requests.get(url, headers=setup.headers, proxies=setup.proxies)
+            soup = BeautifulSoup(response.content, "html.parser")
 
-    details = soup.find_all("div", attrs={"class": "evp_details"})[-1]
+            details = soup.find_all("div", attrs={"class": "evp_details"})[-1]
+        except:
+            continue
+        else:
+            break
+    else:
+        print(f"Failed: {url}")
+        exit()
+
     headword = details.find("span", attrs={"class": "headword"}).string
 
     data = ""
@@ -143,18 +150,31 @@ def cloze_word(text):
     processed = ""
     if len(text) <= 2:
         # processed += "[...]"
+        # processed += "_" * len(text)
         processed += " ".join(["_"] * len(text))
     elif len(text) <= 4:
         # processed += text[0] + "[...]"
+        # processed += text[0] + "_" * (len(text) - 1)
         processed += text[0] + " _" * (len(text) - 1)
     else:
         # processed += text[0] + "[...]" + text[-1]
+        # processed += text[0] + "_" * (len(text) - 2) + text[-1]
         processed += text[0] + " _" * (len(text) - 2) + " " + text[-1]
     
     return processed
 
 def save_audio(filename, url):
-    response = requests.get(url, headers=setup.headers, proxies=setup.proxies)
+    for attempt in range(5):
+        try:
+            response = requests.get(url, headers=setup.headers, proxies=setup.proxies)
+        except:
+            continue
+        else:
+            break
+    else:
+        print(f"Failed: {url}")
+        exit()
+
     if response.status_code == 200:
         if not os.path.exists("media"):
             os.makedirs("media")

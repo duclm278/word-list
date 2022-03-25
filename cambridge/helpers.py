@@ -6,6 +6,7 @@ class Setup:
         self.proxies = {}
     
     def set_proxies(self):
+        print("https://proxy.webshare.io/proxy/rotating")
         username = input("Proxy Username: ")
         password = input("Proxy Password: ")
         self.proxies = {
