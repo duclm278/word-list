@@ -15,8 +15,15 @@ def main():
     setup.set_proxies()
 
     try:
-        first = int(input("First: "))
-        final = int(input("Final: "))
+        answer = input("First: ")
+        if not answer:
+            answer = "1"
+        first = int(answer)
+
+        answer = input("Final: ")
+        if not answer:
+            answer = "6756"
+        final = int(answer)
     except:
         exit()
 
@@ -114,7 +121,7 @@ def get_senses(headword, blocks):
                 sentences += "\t\t"
 
         cloze = cloze_word(headword)
-        data += f"{headword}\t{cloze}\t{title}\t{written}\t{audio}\t[{label}] {definition}{sentences}\n"
+        data += f"{headword}\t{cloze}\t{title}\t{written}\t{audio}\t{label}\t{definition}{sentences}\n"
 
     return data
 
