@@ -81,14 +81,10 @@ def get_senses(headword, blocks):
         written = ""
 
         header = block["header"]
-        if get_audios and header:
+        if header:
             audio_tag = header.find("audio")
-            if audio_tag:
-                audio_src = audio_tag.find("source")["src"]
-                audio_url = "https://www.englishprofile.org" + audio_src
-                filename = os.path.basename(audio_url).lower()
-                save_audio(filename, audio_url)
-                audio = f"[sound:{filename}]"
+            if get_audios and audio_tag:
+                audio = get_audio(audio_tag)
 
             written_tag = header.find("span", attrs={"class": "written"})
             if written_tag:
@@ -150,18 +146,22 @@ def cloze_word(text):
     processed = ""
     if len(text) <= 2:
         # processed += "[...]"
-        # processed += "_" * len(text)
         processed += " ".join(["_"] * len(text))
     elif len(text) <= 4:
         # processed += text[0] + "[...]"
-        # processed += text[0] + "_" * (len(text) - 1)
         processed += text[0] + " _" * (len(text) - 1)
     else:
         # processed += text[0] + "[...]" + text[-1]
-        # processed += text[0] + "_" * (len(text) - 2) + text[-1]
         processed += text[0] + " _" * (len(text) - 2) + " " + text[-1]
     
     return processed
+
+def get_audio(audio_tag):
+    audio_src = audio_tag.find("source")["src"]
+    audio_url = "https://www.englishprofile.org" + audio_src
+    filename = os.path.basename(audio_url).lower()
+    save_audio(filename, audio_url)
+    return f"[sound:{filename}]"
 
 def save_audio(filename, url):
     for attempt in range(5):
