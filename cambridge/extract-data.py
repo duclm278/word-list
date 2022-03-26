@@ -6,6 +6,7 @@ from helpers import Setup
 from lemminflect import getAllInflections
 
 max_quotes = 5
+get_spells = False
 get_audios = False
 
 setup = Setup()
@@ -87,7 +88,7 @@ def get_senses(headword, blocks):
                 audio = get_audio(audio_tag)
 
             written_tag = header.find("span", attrs={"class": "written"})
-            if written_tag:
+            if get_spells and written_tag:
                 written = written_tag.string
 
         sense = block["sense"]
