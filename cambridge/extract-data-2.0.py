@@ -55,11 +55,11 @@ def get_data(url):
 
     term = head.find("h1", attrs={"class": "hw"}).get_text()
 
-    pron = ""
-    pron_tag = head.find("span", attrs={"class": "pron"})
-    if get_spells and pron_tag:
-        pron = pron_tag.get_text()
-        pron = " ".join(pron.split())
+    ipa = ""
+    ipa_tag = head.find("span", attrs={"class": "pron"})
+    if get_spells and ipa_tag:
+        ipa = ipa_tag.get_text()
+        ipa = " ".join(ipa.split())
 
     audio = ""
     audio_tag = head.find("img")
@@ -80,10 +80,10 @@ def get_data(url):
 
         if get_spells and detail.name == "div":
             if "pron" in detail["class"]:
-                pron = detail.get_text()
+                ipa = detail.get_text()
 
         if detail.name == "div" and "block" in detail["class"][0]:
-            blocks.append((title, pron, audio, detail))
+            blocks.append((title, ipa, audio, detail))
 
         if detail.name == "div" and "phrasal_verb" in detail["class"]:
             title_tag = detail.find("h3", attrs={"class": "phrase"})
@@ -91,7 +91,7 @@ def get_data(url):
             title = " ".join(title.split())
             subdetails = detail.find_all("div", attrs={"class": "gwblock"})
             for subdetail in subdetails:
-                blocks.append((title, pron, audio, subdetail))
+                blocks.append((title, ipa, audio, subdetail))
 
     data = get_blocks(term, blocks)
     return term, data
@@ -125,7 +125,7 @@ def save_audio(filename, url):
 def get_blocks(term, blocks):
     data = ""
     for block in blocks:
-        title, pron, audio, main = block
+        title, ipa, audio, main = block
 
         phrase_tag = main.find("h3", attrs={"class": "phrase"})
         if phrase_tag:
@@ -142,16 +142,17 @@ def get_blocks(term, blocks):
         if not senses:
             continue
 
-        basics = (term, title, pron, audio)
+        basics = (term, title, ipa, audio)
         for sense in senses:
             data += get_sense(basics, sense)
 
     return data
 
 def get_sense(basics, sense):
-    term, title, pron, audio = basics
+    data = ""
+    term, title, ipa, audio = basics
 
-    label = sense.find("span", attrs={"class": re.compile("freq.*")}).string
+    level = sense.find("span", attrs={"class": re.compile("freq.*")}).string
     definition = sense.find("span", attrs={"class": "def"}).get_text().strip()
     definition = " ".join(definition.split())
 
@@ -171,7 +172,6 @@ def get_sense(basics, sense):
     else:
         learner_quotes = None
 
-    cloze = occlude_text(term, term, term)[1]
     form_dict = getAllInflections(term)
     forms = {y for x in form_dict.values() for y in x}
     if not forms:
@@ -182,17 +182,20 @@ def get_sense(basics, sense):
         if example_quotes:
             sentence = example_quotes.pop(0).get_text().strip()
             sentence = ' '.join(sentence.split())
-            selected_text, occluded_text = occlude_text(sentence, term, forms)
-            sentences += "\t" + selected_text + "\t" + occluded_text
+            focus_text, cloze_text = occlude_text(sentence, term, forms)
+            sentences += "\t" + focus_text + "\t" + cloze_text
         elif learner_quotes:
             sentence = learner_quotes.pop(0).get_text().strip()
             sentence = ' '.join(sentence.split())
-            selected_text, occluded_text = occlude_text(sentence, term, forms)
-            sentences += "\t" + selected_text + "\t" + occluded_text
+            focus_text, cloze_text = occlude_text(sentence, term, forms)
+            sentences += "\t" + focus_text + "\t" + cloze_text
         else:
             sentences += "\t\t"
 
-    data = f"{term}\t{cloze}\t{title}\t{pron}\t{audio}\t{label}\t{definition}{sentences}\n"
+    sentences = sentences[1:]
+    cloze_term = occlude_text(term, term, term)[1]
+    data += f"{term}\t{cloze_term}\t{title}\t{ipa}\t{audio}\t"
+    data += f"{level}\t{definition}\t{sentences}\n"
     return data
 
 def occlude_word(word):
@@ -210,36 +213,36 @@ def occlude_word(word):
     return result
 
 def occlude_text(text, term, forms):
-    selected_text = ""
-    occluded_text = ""
+    focus_text = ""
+    cloze_text = ""
 
     if len(term.split()) > 1:
-        selected_text, occluded_text = text, text
+        focus_text, cloze_text = text, text
         for word in term.split():
-            selected_word = f"<b>{word}</b>"
-            selected_text = selected_text.replace(word, selected_word)
-            selected_word = f"<b>{word.capitalize()}</b>"
-            selected_text = selected_text.replace(word.capitalize(), selected_word)
-            occluded_word = f"<b>{occlude_word(word)}</b>"
-            occluded_text = occluded_text.replace(word, occluded_word)
-            occluded_word = f"<b>{occlude_word(word).capitalize()}</b>"
-            occluded_text = occluded_text.replace(word.capitalize(), occluded_word)
+            focus_word = f"<b>{word}</b>"
+            focus_text = focus_text.replace(word, focus_word)
+            focus_word = f"<b>{word.capitalize()}</b>"
+            focus_text = focus_text.replace(word.capitalize(), focus_word)
+            cloze_word = f"<b>{occlude_word(word)}</b>"
+            cloze_text = cloze_text.replace(word, cloze_word)
+            cloze_word = f"<b>{occlude_word(word).capitalize()}</b>"
+            cloze_text = cloze_text.replace(word.capitalize(), cloze_word)
 
-        return selected_text, occluded_text
+        return focus_text, cloze_text
 
     doc = nlp(text)
     for token in doc:
         word = token.text
         if word in forms or word.lower() in forms:
-            selected_text += f"<b>{word}</b>"
-            selected_text += token.whitespace_
-            occluded_text += f"<b>{occlude_word(word)}</b>"
-            occluded_text += token.whitespace_
+            focus_text += f"<b>{word}</b>"
+            focus_text += token.whitespace_
+            cloze_text += f"<b>{occlude_word(word)}</b>"
+            cloze_text += token.whitespace_
         else:
-            selected_text += token.text_with_ws
-            occluded_text += token.text_with_ws
+            focus_text += token.text_with_ws
+            cloze_text += token.text_with_ws
 
-    return selected_text, occluded_text
+    return focus_text, cloze_text
 
 if __name__ == "__main__":
     main()
