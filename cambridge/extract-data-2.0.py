@@ -7,7 +7,7 @@ from helpers import Setup
 from lemminflect import getAllInflections
 
 max_quotes = 5
-get_audios = False
+get_audios = True
 get_spells = True
 
 host = "http://englishprofile:vocabulary@vocabulary.englishprofile.org"
@@ -28,8 +28,10 @@ def main():
     if not urls:
         exit()
 
-    with open("data-2.0.txt", "a", encoding="utf-8") as file:
-        for i in range(0, len(urls)):
+    first = int(input("First: "))
+    final = int(input("Final: "))
+    with open(f"{first}-{final}.txt", "a", encoding="utf-8") as file:
+        for i in range(first - 1, final):
             term, data = get_data(urls[i])
 
             file.write(data)
@@ -55,43 +57,54 @@ def get_data(url):
 
     term = head.find("h1", attrs={"class": "hw"}).get_text()
 
-    ipa = ""
+    ipa1 = ""
     ipa_tag = head.find("span", attrs={"class": "pron"})
     if get_spells and ipa_tag:
-        ipa = ipa_tag.get_text()
-        ipa = " ".join(ipa.split())
+        ipa1 = ipa_tag.get_text()
+        ipa1 = " ".join(ipa1.split())
+        ipa1 = ipa1.replace("/ ", "/")
+        ipa1 = ipa1.replace(" /", "/")
 
-    audio = ""
+    audio1 = ""
     audio_tag = head.find("img")
     if get_audios and audio_tag:
-        audio = get_audio(audio_tag)
+        audio1 = get_audio(audio_tag)
 
     title = term
 
-    details = []
+    blocks = []
     posblocks = entry.find_all("div", attrs={"class": "posblock"})
     for posblock in posblocks:
-        details += posblock.find_all(recursive=False)
+        ipa2 = None
+        audio2 = None
+        details = posblock.find_all(recursive=False)
+        for detail in details:
+            if get_spells and detail.name == "span":
+                if "pron" in detail["class"]:
+                    ipa2 = detail.get_text()
+                    ipa2 = " ".join(ipa2.split())
+                    ipa2 = ipa2.replace("/ ", "/")
+                    ipa2 = ipa2.replace(" /", "/")
 
-    blocks = []
-    for detail in details:
-        if get_audios and details.name == "img":
-            audio = get_audio(detail)
+            if get_audios and detail.name == "img":
+                audio2 = get_audio(detail)
 
-        if get_spells and detail.name == "div":
-            if "pron" in detail["class"]:
-                ipa = detail.get_text()
+            if detail.name == "div" and "block" in detail["class"][0]:
+                ipa2 = ipa2 if ipa2 else ipa1
+                audio2 = audio2 if audio2 else audio1
+                blocks.append((title, ipa2, audio2, detail))
 
-        if detail.name == "div" and "block" in detail["class"][0]:
-            blocks.append((title, ipa, audio, detail))
+            if detail.name == "div" and "phrasal_verb" in detail["class"]:
+                ipa2 = ipa2 if ipa2 else ipa1
+                audio2 = audio2 if audio2 else audio1
 
-        if detail.name == "div" and "phrasal_verb" in detail["class"]:
-            title_tag = detail.find("h3", attrs={"class": "phrase"})
-            title = title_tag.get_text().strip()
-            title = " ".join(title.split())
-            subdetails = detail.find_all("div", attrs={"class": "gwblock"})
-            for subdetail in subdetails:
-                blocks.append((title, ipa, audio, subdetail))
+                title_tag = detail.find("h3", attrs={"class": "phrase"})
+                title = title_tag.get_text().strip()
+                title = " ".join(title.split())
+
+                subdetails = detail.find_all("div", attrs={"class": "gwblock"})
+                for subdetail in subdetails:
+                    blocks.append((title, ipa2, audio2, subdetail))
 
     data = get_blocks(term, blocks)
     return term, data
